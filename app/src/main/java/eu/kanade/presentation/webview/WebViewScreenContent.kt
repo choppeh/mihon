@@ -3,6 +3,7 @@ package eu.kanade.presentation.webview
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -37,10 +38,14 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.WarningBanner
 import eu.kanade.tachiyomi.BuildConfig
+import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.util.system.getHtml
 import eu.kanade.tachiyomi.util.system.setDefaultSettings
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
+import okhttp3.Headers
+import okhttp3.OkHttpClient
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
@@ -113,6 +118,45 @@ fun WebViewScreenContent(
                     view?.loadUrl(it.url.toString(), headers)
                 }
                 return super.shouldOverrideUrlLoading(view, request)
+            }
+
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val _url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
+                val method = request.method
+                val _headers = Headers.Builder().apply {
+                    request.requestHeaders.forEach { (key, value) ->
+//                        if (key.equals("X-Requested-With", true) && value.equals(context.packageName, true)) {
+                        if (key.equals("X-Requested-With", true) && value.contains("mihon", true)) {
+                            return@forEach
+                        }
+                        add(key, value)
+                    }
+                    headers.forEach { (key, value) ->
+                        set(key, value)
+                    }
+                }.build()
+
+                val req = when (method) {
+                    "GET" -> GET(_url, _headers)
+                    "POST" -> POST(_url, _headers)
+                    else -> return super.shouldInterceptRequest(view, request)
+                }
+
+                // Execute the request using OkHttp
+                val client = OkHttpClient()
+                val response = client.newCall(req).execute()
+
+                // Get the response body and content type
+                val responseBody = response.body
+                val contentType = responseBody.contentType()
+                    ?.toString()?.split(";")?.get(0) ?: "text/html"
+
+                // Convert the OkHttp response to a WebResourceResponse
+                return WebResourceResponse(
+                    contentType,
+                    "utf-8",
+                    responseBody.byteStream()
+                )
             }
         }
     }
