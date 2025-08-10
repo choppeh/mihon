@@ -2,6 +2,7 @@ package mihon.app.di
 
 import android.content.Context
 import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metrox.viewmodel.MetroViewModelFactory
@@ -25,6 +26,7 @@ import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadWorker
 import eu.kanade.tachiyomi.data.library.LibraryUpdateWorker
 import eu.kanade.tachiyomi.data.library.MetadataUpdateWorker
+import eu.kanade.tachiyomi.data.export.ExportToLocalImpl
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
@@ -50,6 +52,10 @@ import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.category.interactor.ResetCategoryFlags
 import tachiyomi.domain.download.service.DownloadPreferences
+import tachiyomi.domain.export.interactor.ExportMangaToLocal
+import tachiyomi.domain.export.interactor.GetExportDestination
+import tachiyomi.domain.export.interactor.GetExportItems
+import tachiyomi.domain.export.service.ExportService
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetFavorites
 import tachiyomi.domain.manga.interactor.ResetViewerFlags
@@ -124,6 +130,15 @@ interface AppGraph : ViewModelGraph {
     val upsertTrack: UpsertTrack
 
     val getExtensionStoreCountAsFlow: GetExtensionStoreCountAsFlow
+
+    @Binds val ExportToLocalImpl.bind: ExportService
+
+    val exportMangaToLocal: ExportMangaToLocal
+
+    val getExportDestination: GetExportDestination
+
+    val getExportItems: GetExportItems
+
 
     @DependencyGraph.Factory
     fun interface Factory {

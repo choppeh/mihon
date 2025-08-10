@@ -30,6 +30,8 @@ import eu.kanade.presentation.manga.DuplicateMangaDialog
 import eu.kanade.presentation.manga.EditCoverAction
 import eu.kanade.presentation.manga.MangaScreen
 import eu.kanade.presentation.manga.components.DeleteChaptersDialog
+import eu.kanade.presentation.manga.components.ExportToLocalDialog
+import eu.kanade.presentation.manga.components.ExportToLocalProgressDialog
 import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.manga.components.ScanlatorFilterDialog
 import eu.kanade.presentation.manga.components.SetIntervalDialog
@@ -162,6 +164,7 @@ class MangaScreen(
             onChapterSelected = viewModel::toggleSelection,
             onAllChapterSelected = viewModel::toggleAllSelection,
             onInvertSelection = viewModel::invertSelection,
+            onClickExportToLocal = viewModel::verifyExportToLocal.takeIf { isHttpSource }
         )
 
         var showScanlatorsDialog by remember { mutableStateOf(false) }
@@ -269,6 +272,25 @@ class MangaScreen(
                     onValueChanged = { interval: Int -> viewModel.setFetchInterval(dialog.manga, interval) }
                         .takeIf { viewModel.isUpdateIntervalEnabled },
                 )
+            }
+            is MangaViewModel.Dialog.ExportToLocal -> {
+                ExportToLocalDialog(
+                    reason = dialog.reason,
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = viewModel::exportToLocal
+                )
+            }
+            is MangaViewModel.Dialog.Progress -> {
+                ExportToLocalProgressDialog(
+                    progress = dialog.progress,
+                    exitMigration = viewModel::cancelExport
+                )
+            }
+        }
+
+        LaunchedEffect(viewModel) {
+            viewModel.navigateBackEvent.collect {
+                navigator.pop()
             }
         }
 
