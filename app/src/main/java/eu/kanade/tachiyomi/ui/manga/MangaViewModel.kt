@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.manga
 
 import android.content.Context
+import androidx.annotation.FloatRange
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -32,6 +33,7 @@ import eu.kanade.domain.track.interactor.TrackChapter
 import eu.kanade.domain.track.model.AutoTrackState
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.presentation.manga.DownloadAction
+import eu.kanade.presentation.manga.ExportToLocalReason
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.data.cache.CoverCache
@@ -48,6 +50,8 @@ import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -66,6 +70,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -88,6 +93,8 @@ import tachiyomi.domain.chapter.model.ChapterUpdate
 import tachiyomi.domain.chapter.model.NoChaptersException
 import tachiyomi.domain.chapter.service.calculateChapterGap
 import tachiyomi.domain.chapter.service.getChapterSort
+import tachiyomi.domain.export.interactor.ExportMangaToLocal
+import tachiyomi.domain.export.interactor.GetExportDestination
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetDuplicateLibraryManga
 import tachiyomi.domain.manga.interactor.GetMangaWithChapters
@@ -134,6 +141,8 @@ class MangaViewModel(
     private val sourceManager: SourceManager,
     private val refreshTracks: RefreshTracks,
     private val coverCache: CoverCache,
+    private val exportMangaToLocal: ExportMangaToLocal,
+    private val getExportDestination: GetExportDestination,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -196,6 +205,23 @@ class MangaViewModel(
         val manga = getMangaAndChapters.awaitManga(mangaId)
         if (!manga.favorite) {
             setMangaDefaultChapterFlags.await(manga)
+        }
+    }
+
+    private val navigateBackChannel = Channel<Unit>()
+    val navigateBackEvent = navigateBackChannel.receiveAsFlow()
+
+    private var exportJob: Job? = null
+
+    /**
+     * Helper function to update the UI state only if it's currently in success state
+     */
+    private inline fun updateSuccessState(func: (MangaViewModel.State.Success) -> MangaViewModel.State.Success) {
+        state.update {
+            when (it) {
+                MangaViewModel.State.Loading -> it
+                is MangaViewModel.State.Success -> func(it)
+            }
         }
     }
 
@@ -824,6 +850,72 @@ class MangaViewModel(
     }
 
     /**
+     * Verifies if manga to export to local has downloaded chapters or is already exported.
+     */
+    fun verifyExportToLocal() {
+        val manga = successState?.manga ?: return
+
+        val hasDownloads = downloadManager.getDownloadCount(manga) > 0
+
+        viewModelScope.launchIO {
+            val alreadyExported = getExportDestination.await(manga)?.let { destination ->
+                destination.listFiles()?.isNotEmpty() == true
+            } ?: false
+
+            when {
+                !hasDownloads -> showExportToLocalDialog(ExportToLocalReason.NO_DOWNLOADS)
+                alreadyExported -> showExportToLocalDialog(ExportToLocalReason.ALREADY_EXISTS)
+                else -> exportToLocal()
+            }
+        }
+    }
+
+    /**
+     * Exports the current manga to local source.
+     */
+    fun exportToLocal() {
+        val manga = successState?.manga ?: return
+
+        exportJob = viewModelScope.launchIO {
+            updateSuccessState { it.copy(dialog = Dialog.Progress(0f)) }
+
+            try {
+                val result = exportMangaToLocal.await(manga) { progress ->
+                    updateSuccessState {
+                        it.copy(dialog = Dialog.Progress(progress))
+                    }
+                }
+
+                when (result) {
+                    is ExportMangaToLocal.Result.Success -> {
+                        withUIContext {
+                            context.toast(context.stringResource(MR.strings.export_to_local_success))
+                        }
+                        navigateBack()
+                    }
+                    is ExportMangaToLocal.Result.Error -> {
+                        withUIContext {
+                            context.toast(result.error.message)
+                        }
+                    }
+                }
+            } finally {
+                updateSuccessState { it.copy(dialog = null) }
+                exportJob = null
+            }
+        }
+    }
+
+    fun cancelExport() {
+        exportJob?.cancel()
+        exportJob = null
+    }
+
+    private suspend fun navigateBack() {
+        navigateBackChannel.send(Unit)
+    }
+
+    /**
      * Deletes the given list of chapter.
      *
      * @param chapters the list of chapters to delete.
@@ -1029,6 +1121,8 @@ class MangaViewModel(
         data object SettingsSheet : Dialog
         data object TrackSheet : Dialog
         data object FullCover : Dialog
+        data class ExportToLocal(val reason: ExportToLocalReason) : Dialog
+        data class Progress(@FloatRange(0.0, 1.0) val progress: Float) : Dialog
     }
 
     fun dismissDialog() {
@@ -1054,6 +1148,10 @@ class MangaViewModel(
     fun showMigrateDialog(duplicate: Manga) {
         val manga = successState?.manga ?: return
         dialog.value = Dialog.Migrate(target = manga, current = duplicate)
+    }
+
+    fun showExportToLocalDialog(reason: ExportToLocalReason) {
+        updateSuccessState { it.copy(dialog = Dialog.ExportToLocal(reason = reason)) }
     }
 
     fun setExcludedScanlators(excludedScanlators: Set<String>) {
