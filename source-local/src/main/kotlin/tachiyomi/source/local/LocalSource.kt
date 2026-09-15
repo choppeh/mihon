@@ -291,7 +291,8 @@ class LocalSource(
             // Only keep supported formats
             .filterNot { it.name.orEmpty().startsWith('.') }
             .filter { it.isDirectory || Archive.isSupported(it) || it.extension.equals("epub", true) }
-            .map { chapterFile ->
+            .let { uniFiles -> uniFiles.map { it to uniFiles } }
+            .map { (chapterFile, chaptersFileList) ->
                 SChapter.create().apply {
                     url = "${manga.url}/${chapterFile.name}"
                     name = if (chapterFile.isDirectory) {
@@ -309,7 +310,8 @@ class LocalSource(
                         format.file.epubReader(context).use { epub ->
                             epub.fillMetadata(manga, this)
                         }
-                    } else {
+                    }
+                    if(chaptersFileList.singleOrNull() != null){
                         getComicInfoForChapter(chapterFile) { stream ->
                             setChapterDetailsFromComicInfoFile(stream, this)
                         }
