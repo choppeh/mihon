@@ -25,5 +25,5 @@ enum class MangaScreenItem {
 
 enum class ExportToLocalReason {
     ALREADY_EXISTS,
-    NO_DOWNLOADS
+    NO_DOWNLOADS,
 }

@@ -80,7 +80,6 @@ class DownloadCache(
         .onStart { emit(Unit) }
         .shareIn(scope, SharingStarted.Lazily, 1)
 
-
     private var renewalJob: Job? = null
 
     private var initJob: Job
@@ -377,7 +376,7 @@ class DownloadCache(
      */
     private fun renewCache(forceRenew: Boolean = false) {
         // Avoid renewing cache if in the process nor too often
-        if (!forceRenew && (!initJob.isCompleted || !rootDownloadsDir.isExpired() || renewalJob?.isActive == true) ) {
+        if (!forceRenew && (!initJob.isCompleted || !rootDownloadsDir.isExpired() || renewalJob?.isActive == true)) {
             return
         }
 
@@ -498,7 +497,7 @@ private class RootDirectory(
     val dir: UniFile?,
     var sourceDirs: Map<Long, SourceDirectory> = mapOf(),
     var createdAt: Long = 0L,
-    var timeToLive: Long = 1.hours.inWholeMilliseconds
+    var timeToLive: Long = 1.hours.inWholeMilliseconds,
 ) {
     fun isExpired() = createdAt + timeToLive <= System.currentTimeMillis()
 }

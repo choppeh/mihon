@@ -171,7 +171,7 @@ class MangaScreen(
             onChapterSelected = viewModel::toggleSelection,
             onAllChapterSelected = viewModel::toggleAllSelection,
             onInvertSelection = viewModel::invertSelection,
-            onClickExportToLocal = viewModel::verifyExportToLocal.takeIf { isHttpSource }
+            onClickExportToLocal = viewModel::verifyExportToLocal.takeIf { isHttpSource },
         )
 
         var showScanlatorsDialog by remember { mutableStateOf(false) }
@@ -294,13 +294,13 @@ class MangaScreen(
                 ExportToLocalDialog(
                     reason = dialog.reason,
                     onDismissRequest = onDismissRequest,
-                    onConfirm = viewModel::exportToLocal
+                    onConfirm = viewModel::exportToLocal,
                 )
             }
             is MangaViewModel.Dialog.Progress -> {
                 ExportToLocalProgressDialog(
                     progress = dialog.progress,
-                    exitMigration = viewModel::cancelExport
+                    exitMigration = viewModel::cancelExport,
                 )
             }
         }
