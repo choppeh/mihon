@@ -39,4 +39,4 @@ interface ExportService {
      * Deletes all items in a subfolder
      */
     suspend fun deleteAllItemsInSubfolder(subfolder: UniFile): Result<Unit>
-} 
+}
