@@ -169,7 +169,7 @@ fun MangaScreen(
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
-            onClickExportToLocal = onClickExportToLocal
+            onClickExportToLocal = onClickExportToLocal,
         )
     } else {
         MangaScreenLargeImpl(
@@ -206,7 +206,7 @@ fun MangaScreen(
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
-            onClickExportToLocal = onClickExportToLocal
+            onClickExportToLocal = onClickExportToLocal,
         )
     }
 }

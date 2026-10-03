@@ -151,8 +151,8 @@ fun MangaToolbar(
                         add(
                             AppBar.OverflowAction(
                                 title = stringResource(MR.strings.action_export_to_local),
-                                onClick = onClickExportToLocal
-                            )
+                                onClick = onClickExportToLocal,
+                            ),
                         )
                     }
                 },
