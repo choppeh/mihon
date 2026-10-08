@@ -72,6 +72,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
@@ -896,13 +897,11 @@ class MangaViewModel(
         val manga = successState?.manga ?: return
 
         exportJob = viewModelScope.launchIO {
-            updateSuccessState { it.copy(dialog = Dialog.Progress(0f)) }
+            dialog.value = Dialog.Progress(0F)
 
             try {
                 val result = exportMangaToLocal.await(manga) { progress ->
-                    updateSuccessState {
-                        it.copy(dialog = Dialog.Progress(progress))
-                    }
+                    dialog.value = Dialog.Progress(progress)
                 }
 
                 when (result) {
@@ -919,7 +918,7 @@ class MangaViewModel(
                     }
                 }
             } finally {
-                updateSuccessState { it.copy(dialog = null) }
+                dialog.value = null
                 exportJob = null
             }
         }
@@ -1171,7 +1170,7 @@ class MangaViewModel(
     }
 
     fun showExportToLocalDialog(reason: ExportToLocalReason) {
-        updateSuccessState { it.copy(dialog = Dialog.ExportToLocal(reason = reason)) }
+        dialog.value = Dialog.ExportToLocal(reason = reason)
     }
 
     fun setExcludedScanlators(excludedScanlators: Set<String>) {
