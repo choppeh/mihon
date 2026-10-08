@@ -69,8 +69,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -212,18 +212,6 @@ class MangaViewModel(
     val navigateBackEvent = navigateBackChannel.receiveAsFlow()
 
     private var exportJob: Job? = null
-
-    /**
-     * Helper function to update the UI state only if it's currently in success state
-     */
-    private inline fun updateSuccessState(func: (MangaViewModel.State.Success) -> MangaViewModel.State.Success) {
-        state.update {
-            when (it) {
-                MangaViewModel.State.Loading -> it
-                is MangaViewModel.State.Success -> func(it)
-            }
-        }
-    }
 
     private val mangaAndChapters = combine(
         flow {
@@ -877,13 +865,11 @@ class MangaViewModel(
         val manga = successState?.manga ?: return
 
         exportJob = viewModelScope.launchIO {
-            updateSuccessState { it.copy(dialog = Dialog.Progress(0f)) }
+            dialog.value = Dialog.Progress(0F)
 
             try {
                 val result = exportMangaToLocal.await(manga) { progress ->
-                    updateSuccessState {
-                        it.copy(dialog = Dialog.Progress(progress))
-                    }
+                    dialog.value = Dialog.Progress(progress)
                 }
 
                 when (result) {
@@ -900,7 +886,7 @@ class MangaViewModel(
                     }
                 }
             } finally {
-                updateSuccessState { it.copy(dialog = null) }
+                dialog.value = null
                 exportJob = null
             }
         }
@@ -1151,7 +1137,7 @@ class MangaViewModel(
     }
 
     fun showExportToLocalDialog(reason: ExportToLocalReason) {
-        updateSuccessState { it.copy(dialog = Dialog.ExportToLocal(reason = reason)) }
+        dialog.value = Dialog.ExportToLocal(reason = reason)
     }
 
     fun setExcludedScanlators(excludedScanlators: Set<String>) {
