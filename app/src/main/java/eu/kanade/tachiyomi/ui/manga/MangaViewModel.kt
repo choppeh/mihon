@@ -845,7 +845,7 @@ class MangaViewModel(
 
         val hasDownloads = downloadManager.getDownloadCount(manga) > 0
 
-        viewModelScope.launchIO {
+        viewModelScope.launch(Dispatchers.IO) {
             val alreadyExported = getExportDestination.await(manga)?.let { destination ->
                 destination.listFiles()?.isNotEmpty() == true
             } ?: false
@@ -864,7 +864,7 @@ class MangaViewModel(
     fun exportToLocal() {
         val manga = successState?.manga ?: return
 
-        exportJob = viewModelScope.launchIO {
+        exportJob = viewModelScope.launch(Dispatchers.IO) {
             dialog.value = Dialog.Progress(0F)
 
             try {
@@ -874,13 +874,13 @@ class MangaViewModel(
 
                 when (result) {
                     is ExportMangaToLocal.Result.Success -> {
-                        withUIContext {
+                        withContext(Dispatchers.Main) {
                             context.toast(context.stringResource(MR.strings.export_to_local_success))
                         }
                         navigateBack()
                     }
                     is ExportMangaToLocal.Result.Error -> {
-                        withUIContext {
+                        withContext(Dispatchers.Main) {
                             context.toast(result.error.message)
                         }
                     }

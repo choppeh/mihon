@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
@@ -43,8 +44,6 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import logcat.LogPriority
 import tachiyomi.core.common.storage.extension
 import tachiyomi.core.common.storage.nameWithoutExtension
-import tachiyomi.core.common.util.lang.launchIO
-import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.library.service.LibraryPreferences
@@ -96,7 +95,7 @@ class DownloadCache(
     private var rootDownloadsDir = RootDirectory(storageManager.getDownloadsDirectory())
 
     init {
-        initJob = scope.launchIO {
+        initJob = scope.launch(Dispatchers.IO) {
             _isInitializing.emit(true)
             rootDownloadsDirMutex.withLock {
                 try {
@@ -111,9 +110,7 @@ class DownloadCache(
             if (rootDownloadsDir.isExpired()) {
                 renewCache(forceRenew = true)
             } else {
-                scope.launchNonCancellable {
-                    _changes.send(Unit)
-                }
+                _changes.send(Unit)
             }
             _isInitializing.emit(false)
         }
@@ -358,7 +355,7 @@ class DownloadCache(
             return
         }
 
-        renewalJob = scope.launchIO {
+        renewalJob = scope.launch(Dispatchers.IO) {
             if (rootDownloadsDir.isExpired()) {
                 _isInitializing.emit(true)
             }
@@ -427,7 +424,7 @@ class DownloadCache(
         }
 
         // Mainly to notify the indexing notifier UI
-        scope.launchNonCancellable {
+        scope.launch {
             _changes.send(Unit)
         }
     }
@@ -437,7 +434,7 @@ class DownloadCache(
     }
 
     private fun notifyChanges() {
-        scope.launchNonCancellable {
+        scope.launch {
             _changes.send(Unit)
         }
         updateDiskCache()
@@ -446,7 +443,7 @@ class DownloadCache(
     private var updateDiskCacheJob: Job? = null
     private fun updateDiskCache() {
         updateDiskCacheJob?.cancel()
-        updateDiskCacheJob = scope.launchIO {
+        updateDiskCacheJob = scope.launch(Dispatchers.IO) {
             delay(1.seconds)
             ensureActive()
             try {
