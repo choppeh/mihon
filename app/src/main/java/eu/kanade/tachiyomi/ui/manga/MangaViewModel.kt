@@ -55,6 +55,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -910,6 +911,7 @@ class MangaViewModel(
                         withContext(Dispatchers.Main) {
                             context.toast(context.stringResource(MR.strings.export_to_local_success))
                         }
+                        delay(1.seconds)
                         navigateBack()
                     }
                     is ExportMangaToLocal.Result.Error -> {
