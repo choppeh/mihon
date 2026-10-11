@@ -31,7 +31,7 @@ class ExportMangaToLocal(
 
             exportService.exportCover(manga, destination)
             exportService.exportComicInfo(manga, destination)
-
+            onProgress(1f)
             Result.Success
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e) { "Failed to export manga ${manga.title}" }
